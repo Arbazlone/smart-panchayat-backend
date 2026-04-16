@@ -70,7 +70,7 @@ router.get('/', protect, async (req, res) => {
         
         const posts = await Post.find(query)
             .populate('author', 'name profilePic isVerified')
-            .sort({ createdAt: -1 })
+           .sort({ isPinned: -1, createdAt: -1 })
             .limit(parseInt(limit))
             .skip((parseInt(page) - 1) * parseInt(limit));
         
@@ -363,6 +363,45 @@ router.delete('/:id', protect, async (req, res) => {
     } catch (error) {
         console.error('Delete post error:', error.message);
         res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+// @route   PUT /api/posts/:id/pin
+// @desc    Pin or Unpin post (Admin only)
+// @access  Private
+router.put('/:id/pin', protect, async (req, res) => {
+    try {
+        // 🔐 Only admin allowed
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                message: 'Access denied'
+            });
+        }
+
+        const post = await Post.findById(req.params.id);
+
+        if (!post) {
+            return res.status(404).json({
+                success: false,
+                message: 'Post not found'
+            });
+        }
+
+        // 🔁 Toggle pin
+        post.isPinned = !post.isPinned;
+        await post.save();
+
+        res.json({
+            success: true,
+            isPinned: post.isPinned
+        });
+
+    } catch (error) {
+        console.error('Pin error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error'
+        });
     }
 });
 
