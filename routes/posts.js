@@ -365,34 +365,5 @@ router.delete('/:id', protect, async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
-// @route   DELETE /api/posts/:id
-// @desc    Delete post (Admin only)
-// @access  Private
-router.delete('/:id', protect, async (req, res) => {
-    try {
-        if (req.user.role !== 'admin') {
-            return res.status(403).json({ 
-                success: false, 
-                message: 'Access denied' 
-            });
-        }
-
-        const post = await Post.findById(req.params.id);
-
-        if (!post) {
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Post not found' 
-            });
-        }
-
-        await Post.findByIdAndDelete(req.params.id);
-
-        res.json({ success: true, message: 'Post deleted' });
-
-    } catch (err) {
-        res.status(500).json({ success: false });
-    }
-});
 
 module.exports = router;
