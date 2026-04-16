@@ -193,57 +193,37 @@ router.put('/profile', protect, async (req, res) => {
 // @route   POST /api/users/avatar
 // @desc    Upload profile picture
 // @access  Private
-// @route   POST /api/users/avatar
-// @desc    Upload profile picture
-// @access  Private
-router.post('/avatar', protect, (req, res) => {
-    upload.single('avatar')(req, res, async (err) => {
-        if (err) {
-            console.error('❌ Multer error:', err);
-            return res.status(400).json({
-                success: false,
-                message: err.message
-            });
-        }
+router.post('/avatar', protect, upload.single('avatar'), async (req, res) => {
+    try {
+        console.log('📸 Avatar upload request received');
+        console.log('File:', req.file);
         
         if (!req.file) {
-            console.error('❌ No file in request');
             return res.status(400).json({
                 success: false,
-                message: 'Please upload an image'
+                message: 'No image uploaded'
             });
         }
         
-        try {
-            console.log('✅ File saved:', req.file.filename);
-            
-            const user = await User.findById(req.user.id);
-            if (!user) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'User not found'
-                });
-            }
-            
-            user.profilePic = `/uploads/profiles/${req.file.filename}`;
-            await user.save();
-            
-            console.log('✅ Profile updated for user:', user.name);
-            
-            res.json({
-                success: true,
-                message: 'Profile picture updated',
-                profilePic: user.profilePic
-            });
-            
-        } catch (error) {
-            console.error('❌ Database error:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Database error'
-            });
-        }
-    });
+        const user = await User.findById(req.user.id);
+        user.profilePic = `/uploads/profiles/${req.file.filename}`;
+        await user.save();
+        
+        console.log('✅ Profile picture saved:', user.profilePic);
+        
+        res.json({
+            success: true,
+            message: 'Profile picture updated',
+            profilePic: user.profilePic
+        });
+        
+    } catch (error) {
+        console.error('❌ Avatar upload error:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Server error'
+        });
+    }
 });
 
 // @route   PUT /api/users/bio
