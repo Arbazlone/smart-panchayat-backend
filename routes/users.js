@@ -532,5 +532,50 @@ router.put('/contact', protect, async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
+// @route   DELETE /api/users/:id
+// @desc    Delete user (Admin only)
+// @access  Private
+router.delete('/:id', protect, async (req, res) => {
+    try {
+        // 🔐 ADMIN CHECK
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Access denied' 
+            });
+        }
+
+        const user = await User.findById(req.params.id);
+
+        if (!user) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'User not found' 
+            });
+        }
+
+        // ❌ Prevent deleting yourself (optional safety)
+        if (user._id.toString() === req.user.id) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'You cannot delete yourself' 
+            });
+        }
+
+        await User.findByIdAndDelete(req.params.id);
+
+        res.json({ 
+            success: true, 
+            message: 'User deleted successfully' 
+        });
+
+    } catch (error) {
+        console.error('Delete user error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error' 
+        });
+    }
+});
 
 module.exports = router;
