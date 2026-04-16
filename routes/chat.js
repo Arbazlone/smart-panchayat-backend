@@ -72,6 +72,54 @@ router.get('/village/messages', protect, async (req, res) => {
     }
 });
 
+
+// @route   POST /api/chat/create
+// @desc    Create or get personal chat
+// @access  Private
+router.post('/create', protect, async (req, res) => {
+    try {
+        const { userId } = req.body;
+
+        if (!userId) {
+            return res.status(400).json({
+                success: false,
+                message: 'User ID required'
+            });
+        }
+
+        // Check if chat already exists
+        let chat = await Chat.findOne({
+            isGroupChat: false,
+            participants: { $all: [req.user.id, userId] }
+        }).populate('participants', 'name profilePic');
+
+        if (chat) {
+            return res.json({ success: true, conversation: chat });
+        }
+
+        // Create new chat
+        chat = await Chat.create({
+            participants: [req.user.id, userId],
+            isGroupChat: false
+        });
+
+        chat = await Chat.findById(chat._id)
+            .populate('participants', 'name profilePic');
+
+        res.status(201).json({
+            success: true,
+            conversation: chat
+        });
+
+    } catch (error) {
+        console.error('Create chat error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error'
+        });
+    }
+});
+
 // @route   POST /api/chat/village/send
 // @desc    Send message to village chat
 // @access  Private
@@ -108,31 +156,6 @@ router.post('/village/send', protect, async (req, res) => {
     }
 });
 
-// @route   GET /api/chat/:chatId/messages
-// @desc    Get messages for a specific chat
-// @access  Private
-// @route   GET /api/chat/:chatId/messages
-// @desc    Get messages for a specific chat
-// @access  Private
-router.get('/:chatId/messages', protect, async (req, res) => {
-    try {
-        const messages = await Message.find({ chatId: req.params.chatId })
-            .populate('sender', 'name profilePic')
-            .sort({ createdAt: 1 });
-        
-        res.json({
-            success: true,
-            messages
-        });
-    } catch (error) {
-        console.error('Get messages error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Server error'
-        });
-    }
-});
-
 // @route   POST /api/chat/:chatId/send
 // @desc    Send message to a chat
 // @access  Private
@@ -155,6 +178,30 @@ router.post('/:chatId/send', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Send message error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error'
+        });
+    }
+});
+// @route   GET /api/chat/:chatId/messages
+// @desc    Get messages for a specific chat
+// @access  Private
+// @route   GET /api/chat/:chatId/messages
+// @desc    Get messages for a specific chat
+// @access  Private
+router.get('/:chatId/messages', protect, async (req, res) => {
+    try {
+        const messages = await Message.find({ chatId: req.params.chatId })
+            .populate('sender', 'name profilePic')
+            .sort({ createdAt: 1 });
+        
+        res.json({
+            success: true,
+            messages
+        });
+    } catch (error) {
+        console.error('Get messages error:', error);
         res.status(500).json({
             success: false,
             message: 'Server error'
