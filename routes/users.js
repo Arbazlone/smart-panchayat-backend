@@ -8,26 +8,15 @@ const multer = require('multer');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 
-// Configure multer for profile pictures
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/profiles/');
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
-    }
-});
+// Configure multer for profile pictures - USE MEMORY STORAGE
+const storage = multer.memoryStorage();
 
 const upload = multer({
-    storage,
+    storage: storage,
     limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
         console.log('📸 File upload attempt:', file.originalname, file.mimetype);
-        
-        // Accept common image types
         const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-        
         if (allowedMimes.includes(file.mimetype)) {
             cb(null, true);
         } else {
@@ -191,12 +180,11 @@ router.put('/profile', protect, async (req, res) => {
 });
 
 // @route   POST /api/users/avatar
-// @desc    Upload profile picture
+// @desc    Upload profile picture (Base64 storage)
 // @access  Private
 router.post('/avatar', protect, upload.single('avatar'), async (req, res) => {
     try {
         console.log('📸 Avatar upload request received');
-        console.log('File:', req.file);
         
         if (!req.file) {
             return res.status(400).json({
@@ -205,16 +193,19 @@ router.post('/avatar', protect, upload.single('avatar'), async (req, res) => {
             });
         }
         
+        // Convert buffer to base64
+        const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+        
         const user = await User.findById(req.user.id);
-        user.profilePic = `/uploads/profiles/${req.file.filename}`;
+        user.profilePic = base64Image; // Store base64 directly in database
         await user.save();
         
-        console.log('✅ Profile picture saved:', user.profilePic);
+        console.log('✅ Profile picture saved to database');
         
         res.json({
             success: true,
             message: 'Profile picture updated',
-            profilePic: user.profilePic
+            profilePic: base64Image
         });
         
     } catch (error) {
